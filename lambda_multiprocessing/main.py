@@ -205,8 +205,7 @@ class Pool:
 
         if self.num_processes:
             # send the payload to the child
-            parent_conn, child_conn  = Pipe(False)
-
+        
             self.pipes[self.next_child].send([[child_conn, func, args, kwds], None])
             self.next_child = (self.next_child + 1) % self.num_processes # round robin
             self.per_task_pipes.append(parent_conn) # to be garbage collected later

@@ -1,6 +1,6 @@
 import unittest
 import multiprocessing
-from main import Pool, TimeoutError, AsyncResult
+from lambda_multiprocessing import Pool, TimeoutError, AsyncResult
 from time import time, sleep
 from typing import Tuple
 
@@ -275,11 +275,17 @@ class TestMap(TestCase):
             with self.assertRaises(AssertionError):
                 p.map(fail, range(2))
 
-    # def test_memory_leak(self):
-    #     for _ in range(10**3):
-    #         with Pool() as p:
-    #             for _ in range(10**5):
-    #                 p.map(square, range(10**3))
+    @unittest.skip('Need to implement chunking to fix this')
+    def test_long_iter(self):
+        with Pool() as p:
+            p.map(square, range(10**3))
+
+    @unittest.skip('Very slow')
+    def test_memory_leak(self):
+        for i in range(10**3):
+            with Pool() as p:
+                for j in range(10**5):
+                    p.map(square, range(10**3))
 
 class TestMapAsync(TestCase):
     def test_simple(self):
@@ -428,3 +434,6 @@ class TestMoto(TestCase):
 
         ret = client.get_object(Bucket=bucket_name, Key=key)['Body'].read()
         self.assertEqual(ret, data)
+
+if __name__ == '__main__':
+    unittest.main()
