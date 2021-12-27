@@ -3,6 +3,8 @@ import multiprocessing
 from lambda_multiprocessing import Pool, TimeoutError, AsyncResult
 from time import time, sleep
 from typing import Tuple
+from pathlib import Path
+import os
 
 import boto3
 from moto import mock_s3
