@@ -346,7 +346,7 @@ Resources:
       Description: Integration test for lambda_multiprocessing
       FunctionName: !Ref LambdaName
       Handler: index.handler
-      MemorySize: 128
+      MemorySize: 256
       PackageType: Zip
       ReservedConcurrentExecutions: 1
       Role: !GetAtt LambdaRole.Arn

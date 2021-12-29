@@ -230,15 +230,10 @@ class Pool:
             return AsyncResult(recv_conn)
 
     def map_async(self, func, iterable, chunksize=None, callback=None, error_callback=None) -> List[AsyncResult]:
-        if chunksize:
-            raise NotImplementedError("Haven't implemented chunksizes. Infinite chunksize only.")
-        if callback or error_callback:
-            raise NotImplementedError("Haven't implemented callbacks")
-        return [self.apply_async(func, (arg,)) for arg in iterable]
+        return self.starmap_async(func, zip(iterable), chunksize, callback, error_callback)
 
     def map(self, func, iterable, chunksize=None, callback=None, error_callback=None) -> List:
-        results = self.map_async(func, iterable, chunksize, callback, error_callback)
-        return [r.get() for r in results]
+        return self.starmap(func, zip(iterable), chunksize, callback, error_callback)
 
     def starmap_async(self, func, iterable: Iterable[Iterable], chunksize=None, callback=None, error_callback=None) -> List[AsyncResult]:
         if chunksize:
