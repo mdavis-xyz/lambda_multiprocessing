@@ -1,0 +1,564 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  EmailAddress:
+    Type: String
+    Description: Email address to send invocation alarm alerts to
+  PhoneNumber:
+    Type: String
+    Description: Phone number to send invocation alarm alerts to
+  LambdaName:
+    Type: String
+    Default: lambda_multiprocessing_ci
+Metadata:
+  'AWS::CloudFormation::Designer':
+    5068523d-6bc8-4e1c-adfc-ee2bc65653ea:
+      size:
+        width: 810
+        height: 600
+      position:
+        x: 340
+        'y': 220
+      z: 1
+      embeds:
+        - b681fad8-0c78-4ed2-9a53-40038b154a82
+        - 3ab4d823-9e67-4024-a3c6-7a5fb60b525a
+        - d2d716e6-b022-44f7-aaba-3a0285430a81
+        - a6f3e9ad-d3d0-4902-bc64-40e33014cae7
+        - 6c8b04f4-774b-4dff-ae6d-025e08afe3a9
+        - edde572e-553d-4cca-8ceb-7063a90c5ced
+        - 08394d29-8a6a-44c0-ab70-ab0909d7f20c
+        - cc28215d-1237-4b77-97c5-3f3a8b818255
+        - 299e27ab-d926-42f7-bf59-83c3c3ceac3a
+        - 7b6eff64-c79e-42d6-91e7-ef991821ee30
+        - a0bf2b40-ba30-46c0-a845-424c3612492b
+    7b6eff64-c79e-42d6-91e7-ef991821ee30:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 700
+        'y': 250
+      z: 2
+      parent: 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+      embeds: []
+    6c8b04f4-774b-4dff-ae6d-025e08afe3a9:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 520
+        'y': 250
+      z: 2
+      parent: 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+      embeds: []
+      isassociatedwith:
+        - b681fad8-0c78-4ed2-9a53-40038b154a82
+    299e27ab-d926-42f7-bf59-83c3c3ceac3a:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 530
+        'y': 370
+      z: 2
+      parent: 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+      embeds: []
+      iscontainedinside:
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+    cc28215d-1237-4b77-97c5-3f3a8b818255:
+      size:
+        width: 150
+        height: 150
+      position:
+        x: 940
+        'y': 250
+      z: 2
+      parent: 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+      embeds: []
+      iscontainedinside:
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+    08394d29-8a6a-44c0-ab70-ab0909d7f20c:
+      size:
+        width: 150
+        height: 150
+      position:
+        x: 940
+        'y': 430
+      z: 2
+      parent: 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+      embeds: []
+      iscontainedinside:
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+    edde572e-553d-4cca-8ceb-7063a90c5ced:
+      size:
+        width: 150
+        height: 150
+      position:
+        x: 940
+        'y': 610
+      z: 2
+      parent: 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+      embeds: []
+      iscontainedinside:
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+        - 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+    a0bf2b40-ba30-46c0-a845-424c3612492b:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 640
+        'y': 470
+      z: 2
+      parent: 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+      embeds: []
+    3ab4d823-9e67-4024-a3c6-7a5fb60b525a:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 640
+        'y': 600
+      z: 2
+      parent: 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+      embeds: []
+    a6f3e9ad-d3d0-4902-bc64-40e33014cae7:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 640
+        'y': 710
+      z: 2
+      parent: 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+      embeds: []
+      isassociatedwith:
+        - 3ab4d823-9e67-4024-a3c6-7a5fb60b525a
+    d2d716e6-b022-44f7-aaba-3a0285430a81:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 750
+        'y': 710
+      z: 2
+      parent: 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+      embeds: []
+      isassociatedwith:
+        - 3ab4d823-9e67-4024-a3c6-7a5fb60b525a
+    b681fad8-0c78-4ed2-9a53-40038b154a82:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 380
+        'y': 250
+      z: 2
+      parent: 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+      embeds: []
+    71ee616a-38d8-410a-973f-c6a3defcbbe5:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 700
+        'y': 130
+      z: 0
+      embeds: []
+    7177fcf6-465b-456a-8f35-68beb0631bb2:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 810
+        'y': 130
+      z: 0
+      embeds: []
+      isassociatedwith:
+        - 71ee616a-38d8-410a-973f-c6a3defcbbe5
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.0.0/20
+      EnableDnsHostnames: false
+      EnableDnsSupport: false
+      Tags:
+        - Key: Name
+          Value: lambda_multiprocessing_ci_isolated
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 5068523d-6bc8-4e1c-adfc-ee2bc65653ea
+  LambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Description: Allow nothing
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Ref LambdaPolicy
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 6c8b04f4-774b-4dff-ae6d-025e08afe3a9
+  Function:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile: |
+          def handler(event, context):
+             pass
+      Description: Integration test for lambda_multiprocessing
+      FunctionName: !Ref LambdaName
+      Handler: index.handler
+      MemorySize: 128
+      PackageType: Zip
+      ReservedConcurrentExecutions: 1
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: python3.9
+      Timeout: 60
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref SecGrp
+        SubnetIds:
+          - !Ref SubnetA
+          - !Ref SubnetB
+          - !Ref SubnetC
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 7b6eff64-c79e-42d6-91e7-ef991821ee30
+  SecGrp:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Block all ingress and egress
+      GroupName: block_all
+      SecurityGroupEgress: []
+      SecurityGroupIngress: []
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 299e27ab-d926-42f7-bf59-83c3c3ceac3a
+  SubnetA:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - 'Fn::GetAZs': !Ref 'AWS::Region'
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: lambda_multiprocessing_ci_isolated_a
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: cc28215d-1237-4b77-97c5-3f3a8b818255
+  SubnetB:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select
+        - 1
+        - 'Fn::GetAZs': !Ref 'AWS::Region'
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: lambda_multiprocessing_ci_isolated_b
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 08394d29-8a6a-44c0-ab70-ab0909d7f20c
+  SubnetC:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select
+        - 2
+        - 'Fn::GetAZs': !Ref 'AWS::Region'
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: lambda_multiprocessing_ci_isolated_c
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: edde572e-553d-4cca-8ceb-7063a90c5ced
+  InvocationAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+        - !Ref Topic
+      AlarmDescription: 'lambda_multiprocessing lambda is being invoked a lot, possible DOS'
+      AlarmName: !Sub '${LambdaName}_many_invocations'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref Function
+      EvaluationPeriods: 1
+      MetricName: Invocations
+      Namespace: AWS/Lambda
+      Period: 43200
+      Statistic: Sum
+      Threshold: 10
+      TreatMissingData: notBreaching
+      Unit: Count
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: a0bf2b40-ba30-46c0-a845-424c3612492b
+  EmailSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Endpoint: !Ref EmailAddress
+      Protocol: email
+      TopicArn: !Ref Topic
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: a6f3e9ad-d3d0-4902-bc64-40e33014cae7
+  Topic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      DisplayName: mdavisxyz
+      TopicName: !Sub '${LambdaName}_alarm'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 3ab4d823-9e67-4024-a3c6-7a5fb60b525a
+  SMSSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Endpoint: !Ref PhoneNumber
+      Protocol: sms
+      TopicArn: !Ref Topic
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: d2d716e6-b022-44f7-aaba-3a0285430a81
+  LambdaPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      Description: Allow invoking any lambda inside VPC
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ec2:CreateNetworkInterface'
+            Resource:
+              - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/${SecGrp}'
+              - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${SubnetA}'
+              - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${SubnetB}'
+              - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${SubnetC}'
+            Condition:
+              StringEquals:
+                'ec2:Vpc': !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VPC}'
+          - Effect: Allow
+            Action:
+              - 'ec2:CreateNetworkInterface'
+            Resource:
+              - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*'
+              # VPC condition not supported for this type of resource for this action
+          - Effect: Allow
+            Action:
+              - 'ec2:DeleteNetworkInterface'
+            Resource:
+              # I don't know why we need the first
+              # the docs say the second is sufficient, but it doesn't work
+              - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:*'
+              - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*'
+            # the docs say this is supported, but it's not
+            # Condition:
+            #   StringEquals:
+            #     'ec2:Vpc': !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VPC}'
+
+          - Effect: Allow
+            Action:
+              # this action must have resource: * and no conditions
+              # cannot be restricted
+              - 'ec2:DescribeNetworkInterfaces'
+            Resource:
+              - '*'
+          - Effect: Allow
+            Action:
+              - 'ec2:AssignPrivateIpAddresses'
+              - 'ec2:UnassignPrivateIpAddresses'
+            Resource:
+              - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*'
+
+            Condition:
+              StringEquals:
+                'ec2:Vpc': !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VPC}'
+
+          # CloudWatch logging doesn't work without network connectivity out of the VPC
+          # - Effect: Allow
+          #   Action:
+          #     - 'logs:CreateLogStream'
+          #   Resource:
+          #     - !Sub >-
+          #       arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaName}
+          # - Effect: Allow
+          #   Action:
+          #     - 'logs:CreateLogGroup'
+          #     - 'logs:PutLogEvents'
+          #   Resource:
+          #     - !Sub >-
+          #       arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaName}:*
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: b681fad8-0c78-4ed2-9a53-40038b154a82
+  GithubPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      Description: Allow invoking the multiprocessing CI lambda
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'lambda:InvokeFunction'
+              - 'lambda:UpdateFunctionCode'
+            Resource:
+              - !GetAtt Function.Arn
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 71ee616a-38d8-410a-973f-c6a3defcbbe5
+  GithubUser:
+    Type: 'AWS::IAM::User'
+    Properties:
+      ManagedPolicyArns:
+        - !Ref GithubPolicy
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 7177fcf6-465b-456a-8f35-68beb0631bb2

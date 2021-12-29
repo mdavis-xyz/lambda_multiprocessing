@@ -35,7 +35,7 @@ and have no shared memory device (`/dev/shm`).
 ## The Solution
 
 There is a workaround using `Pipe`s and `Process`es.
-Amazon documented it [in this blog post].
+Amazon documented it [in this blog post](https://aws.amazon.com/blogs/compute/parallel-processing-in-python-with-aws-lambda/).
 However that example is very much tied to the work being done,
 it doesn't have great error handling,
 and is not structured in the way you'd expect when using the normal `multiprocessing` library.
