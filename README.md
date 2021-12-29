@@ -113,3 +113,6 @@ Then you can run the unit tests with:
 ```
 python3 -m unittest
 ```
+
+`CICD` is for the GitHub Actions which run unit tests and integration tests.
+You probably don't need to touch those.

@@ -549,6 +549,7 @@ Resources:
             Action:
               - 'lambda:InvokeFunction'
               - 'lambda:UpdateFunctionCode'
+              - 'lambda:GetFunctionConfiguration' # poll for updating/deployed status
             Resource:
               - !GetAtt Function.Arn
     Metadata:
