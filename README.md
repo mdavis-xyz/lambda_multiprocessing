@@ -74,6 +74,10 @@ When constructing the pool, initializer, initargs, maxtasksperchild and context 
 For `*map*` functions,
 callbacks and chunk sizes have not been implemented.
 
+`imap` and `imap_unordered` have not been implemented.
+
+If you need any of these things implemented, raise an issue or a PR in github.
+
 ## Concurrency Safety
 
 Boto3 (the AWS SDK) is concurrency safe.

@@ -10,7 +10,7 @@ setup(
  description='drop-in replacement for multiprocessing.Pool in AWS Lambda functions (without /dev/shm shared memory)',
  long_description=long_description,
  long_description_content_type="text/markdown",
- # url='Github Url',
+ url='https://github.com/mdavis-xyz/lambda_multiprocessing',
  author='Matthew Davis',
  author_email='github@mdavis.xyz',
  classifiers=[

@@ -320,3 +320,9 @@ class Pool:
     def starmap(self, func, iterable: Iterable[Iterable], chunksize=None, callback=None, error_callback=None) -> List[Any]:
         results = self.starmap_async(func, iterable, chunksize, callback, error_callback)
         return [r.get() for r in results]
+
+    def imap(self, func, iterable, chunksize=None):
+        raise NotImplementedError("Only normal apply, map, starmap and their async equivilents have been implemented")
+
+    def imap_unordered(self, func, iterable, chunksize=None):
+        raise NotImplementedError("Only normal apply, map, starmap and their async equivilents have been implemented")
