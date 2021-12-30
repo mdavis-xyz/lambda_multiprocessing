@@ -17,6 +17,8 @@ jobs:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
+    concurrency: 1
+
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -31,7 +33,7 @@ jobs:
 #           unzip awscliv2.zip
 #           sudo ./aws/install
 #           aws --version
-          
+
       - name: Check AWS Credentials
         run: |
           set -e
@@ -52,4 +54,3 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ap-southeast-2
           LAMBDA_FUNCTION: lambda_multiprocessing_ci
-
