@@ -1,54 +1,217 @@
 from multiprocessing import TimeoutError, Process, Pipe
 from multiprocessing.connection import Connection
-from typing import Any, Iterable, List
+from typing import Any, Iterable, List, Dict, Tuple, Union
+from uuid import uuid4, UUID
+import random
 import os
+from time import time
+
+class Child:
+    proc: Process
+
+    # this is the number of items that we have sent to the child process
+    # minus the number we have received back
+    # includes items in the queue not processed,
+    # items currently being processed
+    # and items that have been processed by the child, but not read by the parent
+    # does not include the termination command from parent to child
+    queue_sz: int = 0
+
+    # parent_conn.send()  to give stuff to the child
+    # parent_conn.recv() to get results back from child
+    parent_conn: Connection
+    child_conn: Connection
+
+    result_cache: Dict[UUID, Tuple[Any, Exception]] = {}
+
+    _closed: bool = False
+
+    # if True, do the work in the main process
+    # but present the same interface
+    # and still send stuff through the pipes (to verify they're pickleable)
+    # this is so we can unit test with moto
+    main_proc: bool
+
+    def __init__(self, main_proc=False):
+        self.parent_conn, self.child_conn = Pipe(duplex=True)
+        self.main_proc = main_proc
+        if not main_proc:
+            self.proc = Process(target=self.spin)
+            self.proc.start()
+
+    # each child process runs in this
+    # a while loop waiting for payloads from the self.child_conn
+    # [(id, func, args, kwds), None] -> call func(args, *kwds)
+    #                         and send the return back through the self.child_conn pipe
+    #                         {id: (ret, None)} if func returned ret
+    #                         {id: (None, err)} if func raised exception err
+    # [None, True] -> exit gracefully (write nothing to the pipe)
+    def spin(self) -> None:
+        while True:
+            (job, quit_signal) = self.child_conn.recv()
+            if quit_signal:
+                break
+            else:
+                (id, func, args, kwds) = job
+                result = self._do_work(id, func, args, kwds)
+                self.child_conn.send(result)
+        self.child_conn.close()
+
+    def _do_work(self, id, func, args=(), kwds={}) -> Union[Tuple[Any, None], Tuple[None, Exception]]:
+        try:
+            ret = {id: (func(*args, **kwds), None)}
+        except Exception as e:
+            # how to handle KeyboardInterrupt?
+            ret = {id: (None, e)}
+        assert isinstance(list(ret.keys())[0], UUID)
+        return ret
+
+    def submit(self, func, args=(), kwds={}) -> 'AsyncResult':
+        if self._closed:
+            raise ValueError("Cannot submit tasks after closure")
+        id = uuid4()
+        self.parent_conn.send([(id, func, args, kwds), None])
+        if self.main_proc:
+            self.child_conn.recv()
+            ret = self._do_work(id, func, args, kwds)
+            self.child_conn.send(ret)
+        self.queue_sz += 1
+        return AsyncResult(id=id, child=self)
+
+    # grab all results in the pipe from child to parent
+    # save them to self.result_cache
+    def flush(self):
+        # watch out, when the other end is closed, a termination byte appears, so .poll() returns True
+        while (not self.parent_conn.closed) and (self.queue_sz > 0) and self.parent_conn.poll(0):
+            result = self.parent_conn.recv()
+            assert isinstance(list(result.keys())[0], UUID)
+            self.result_cache.update(result)
+            self.queue_sz -= 1
+
+    # prevent new tasks from being submitted
+    # but keep existing tasks running
+    # should be idempotent
+    def close(self):
+        if not self._closed:
+            if not self.main_proc:
+                # send quit signal to child
+                self.parent_conn.send([None, True])
+            else:
+                # no child process to close
+                self.flush()
+                self.child_conn.close()
+
+            # keep track of closure,
+            # so subsequent task submissions are rejected
+            self._closed = True
+
+    # after closing
+    # wait for existing tasks to finish
+    # should be idempotent
+    def join(self):
+        assert self._closed, "Must close before joining"
+        if not self.main_proc:
+            try:
+                self.proc.join()
+            except ValueError as e:
+                # .join() has probably been called multiple times
+                # so the process has already been closed
+                pass
+            finally:
+                self.proc.close()
+
+        self.flush()
+        self.parent_conn.close()
+
+
+    # terminate child processes without waiting for them to finish
+    # should be idempotent
+    def terminate(self):
+        if not self.main_proc:
+            try:
+                a = self.proc.is_alive()
+            except ValueError:
+                # already closed
+                # .is_alive seems to raise ValueError not return False if dead
+                pass
+            else:
+                if a:
+                    try:
+                        self.proc.close()
+                    except ValueError:
+                        self.proc.terminate()
+        self.parent_conn.close()
+        self.child_conn.close()
+        self._closed |= True
+
+    def __del__(self):
+        self.terminate()
+
 
 class AsyncResult:
-    def __init__(self, Connection):
-        self.conn = Connection
-        self.result_ready = False
-        self.result: Tuple[Any, Exception] = None
+    def __init__(self, id: UUID, child: Child):
+        assert isinstance(id, UUID)
+        self.id = id
+        self.child = child
+        self.result: Union[Tuple[Any, None], Tuple[None, Exception]] = None
 
-    # grab the result, and save it
-    # assume it's ready
+    # assume the result is in the self.child.result_cache
+    # move it into self.result
     def _load(self):
-        assert not self.result_ready
-        self.result = self.conn.recv()
-        self.result_ready = True
-        self.conn.close()
+        self.result = self.child.result_cache[self.id]
+        del self.child.result_cache[self.id] # prevent memory leak
 
+    # Return the result when it arrives.
+    # If timeout is not None and the result does not arrive within timeout seconds
+    # then multiprocessing.TimeoutError is raised.
+    # If the remote call raised an exception then that exception will be reraised by get().
     # .get() must remember the result
     # and return it again multiple times
+    # delete it from the Child.result_cache to avoid memory leak
     def get(self, timeout=None):
-        if self.result_ready:
-            (result, ex) = self.result
+        if self.result is not None:
+            (response, ex) = self.result
             if ex:
-                # which approach two use?
-                # first is what the standard library does
-                # I think the second is clearer?
                 raise ex
-                # raise RuntimeError("Function inside child process failed") from ex
             else:
-                return result
+                return response
+        elif self.id in self.child.result_cache:
+            self._load()
+            return self.get(0)
         else:
             self.wait(timeout)
             if not self.ready():
                 raise TimeoutError("result not ready")
             else:
-                self._load()
-                return self.get()
+                return self.get(0)
 
+    # Wait until the result is available or until timeout seconds pass.
     def wait(self, timeout=None):
-        if not self.result_ready:
-            self.conn.poll(timeout)
+        start_t = time()
+        if self.result is None:
+            self.child.flush()
+            # the result we want might not be the next result
+            # it might be the 2nd or 3rd next
+            while (self.id not in self.child.result_cache) and \
+                  ((timeout is None) or (time() - timeout < start_t)):
+                if timeout is None:
+                    self.child.parent_conn.poll()
+                else:
+                    elapsed_so_far = time() - start_t
+                    remaining = timeout - elapsed_so_far
+                    self.child.parent_conn.poll(remaining)
+                if self.child.parent_conn.poll(0):
+                    self.child.flush()
 
+    # Return whether the call has completed.
     def ready(self):
-        # if the other end closed the connection before sending anything
-        # .poll() returns True, because there's a termination byte in the pipe
-        return self.result_ready | self.conn.poll(0)
+        self.child.flush()
+        return self.result or (self.id in self.child.result_cache)
 
+    # Return whether the call completed without raising an exception.
+    # Will raise ValueError if the result is not ready.
     def successful(self):
-        if not self.result_ready:
+        if self.result is None:
             if not self.ready():
                 raise ValueError("Result is not ready")
             else:
@@ -83,27 +246,11 @@ class Pool:
     def __enter__(self):
         self._closed = False
 
-        # list of Pipes to write commands to the child process
-        # and receive results
-        # see docs for self.spin for payload details
-        self.pipes: List[Connection] = []
-
-        # list of child processes
-        # they sit and wait for commands via command_pipes
-        self.child_procs: List[Process] = []
-
-        for n in range(self.num_processes):
-            recv_conn, send_conn  = Pipe(False)
-            self.pipes.append(send_conn)
-            p = Process(target=self.spin, args=(recv_conn,))
-            p.start()
-            self.child_procs.append(p)
-
-        # give the next job to this child
-        # round robin style
-        self.next_child = 0
-
-        self.per_task_pipes: List[Connection] = []
+        if self.num_processes > 0:
+            self.children = [Child() for _ in range(self.num_processes)]
+        else:
+            # create one 'child' which will just do work in the main thread
+            self.children = [Child(main_proc=True)]
 
         return self
 
@@ -119,75 +266,21 @@ class Pool:
     # but keep existing tasks running
     def close(self):
         if not self._closed:
-            # tell each child process to exit gracefully
-            # once they finish their existing class
-            for pipe in self.pipes:
-                pipe.send([None, True])
-                pipe.close()
-
-            # keep track of closure,
-            # so subsequent task submissions are rejected
-            self._closed = True
+            for c in self.children:
+                c.close()
+            self._closed |= True
 
     # wait for existing tasks to finish
     def join(self):
         assert self._closed, "Must close before joining"
-        for p in self.child_procs:
-            try:
-                p.join()
-            except ValueError as e:
-                # .join() has probably been called multiple times
-                # so the process has already been closed
-                pass
-            finally:
-                p.close()
-
-        for p in self.per_task_pipes:
-            # probably already closed (closing twice is ok)
-            # won't be closed yet if the AsyncResult.get() was never called sucessfully
-            p.close()
+        for c in self.children:
+            c.join()
 
     # terminate child processes without waiting for them to finish
     def terminate(self):
-        for p in self.child_procs:
-            try:
-                a = p.is_alive()
-            except ValueError:
-                # already closed
-                # .is_alive seems to raise ValueError not return False if dead
-                pass
-            else:
-                if a:
-                    try:
-                        p.close()
-                    except ValueError:
-                        p.terminate()
-        for pipe in self.pipes:
-            pipe.close()
+        for c in self.children:
+            c.terminate()
         self._closed |= True
-    # each child process runs in this
-    # a while loop waiting for payloads from the Pipe
-    # [(result_conn, func, args, kwds), None] -> call func(args, *kwds)
-    #                         and send the return back through the result_pipe pipe
-    #                         [ret, None] if func returned ret
-    #                         [None, err] if func raised exception err
-    # [None, True] -> exit gracefully
-    def spin(self, conn: Connection) -> None:
-        while True:
-            (job, quit_signal) = conn.recv()
-            if quit_signal:
-                break
-            else:
-                (result_conn, func, args, kwds) = job
-                try:
-                    result = func(*args, **kwds)
-                except Exception as e:
-                    # how to handle KeyboardInterrupt?
-                    ret = (None, e)
-                else:
-                    ret = (result, None)
-                result_conn.send(ret)
-        conn.close()
 
     def apply(self, func, args=(), kwds={}):
         ret = self.apply_async(func, args, kwds)
@@ -203,31 +296,13 @@ class Pool:
             raise ValueError("Pool already closed")
 
 
-        if self.num_processes:
-            # send the payload to the child
-            parent_conn, child_conn  = Pipe(False)
-
-            self.pipes[self.next_child].send([[child_conn, func, args, kwds], None])
-            self.next_child = (self.next_child + 1) % self.num_processes # round robin
-            self.per_task_pipes.append(parent_conn) # to be garbage collected later
-            return AsyncResult(parent_conn)
-        else:
-            # run in the main thread
-            # for when we unit test using moto
-            # send the result into a Pipe and back to the same process
-            # so we can re-use the same AsyncResult approach
-            recv_conn, send_conn  = Pipe(False)
-            try:
-                # do the actual work in the main thread
-                result = func(*args, **kwds)
-            except Exception as e:
-                ret = (None, e)
-            else:
-                ret = (result, None)
-            send_conn.send(ret)
-            send_conn.close()
-            self.per_task_pipes.append(recv_conn) # to be garbage collected later
-            return AsyncResult(recv_conn)
+        # choose the first idle process if there is one
+        # if not, choose the process with the shortest queue
+        for c in self.children:
+            c.flush()
+        min_q_sz = min(c.queue_sz for c in self.children)
+        c = random.choice([c for c in self.children if c.queue_sz == min_q_sz])
+        return c.submit(func, args, kwds)
 
     def map_async(self, func, iterable, chunksize=None, callback=None, error_callback=None) -> List[AsyncResult]:
         return self.starmap_async(func, zip(iterable), chunksize, callback, error_callback)

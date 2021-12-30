@@ -60,13 +60,12 @@ with Pool() as p:
 assert results == [x*x for x in range(5)]
 ```
 
-Note that Lambda functions usually have only 1 vCPU.
-If you allocate a lot or memory, they might get a second one.
-Multiprocessing in a lambda is useful for IO-bound tasks
+Note that Lambda functions usually have only 2 vCPUs.
+If you allocate a lot or memory you get a few more.
+(e.g. 3 at 5120MB, 6 at 10240MB)
+The performance benefit you get from multiprocessing CPU-bound tasks is limited by the number of CPUs.
+The biggest performance benefit is for IO-bound tasks.
 (e.g. uploading many files to S3, publishing many payloads to SNS etc).
-
-You will not see any performance benefit compared to a `for` loop if you have a CPU-bound task.
-(i.e. no upload/download, no sleeping and no disk read/write).
 
 ## Limitations
 
@@ -74,17 +73,6 @@ When constructing the pool, initializer, initargs, maxtasksperchild and context 
 
 For `*map*` functions,
 callbacks and chunk sizes have not been implemented.
-
-This library works by spawning several child processes,
-and giving them tasks in a round-robin style.
-If you have many quick tasks and one long task, then many quick tasks
-(e.g. `Pool().map(time.sleep, [1,1,100,1,1])`)
-then that long task will result in blocking.
-If you have a use case like this, raise a GitHub issue.
-
-For this reason, if you have a long iterable of payloads,
-you may get `OSError: [Errno 24] Too many open files`.
-Raise a GitHub issue if this impacts you.
 
 ## Concurrency Safety
 
@@ -116,3 +104,32 @@ python3 -m unittest
 
 `CICD` is for the GitHub Actions which run unit tests and integration tests.
 You probably don't need to touch those.
+
+## Design
+
+When you `__enter__` the pool, it creates several `Child`s.
+These contain the actual child `Process`es,
+plus a duplex pipe to send tasks to the child and get results back.
+
+The child process just waits for payloads to appear in the pipe.
+It grabs the function and arguments from it, does the work,
+catches any exception, then sends the exception or result back through the pipe.
+Note that the function that the client gives to this library might return an Exception for some reason,
+so we return either `[result, None]` or `[None, Exception]`, to differentiate.
+
+To close everything up when we're done, the parent sends a payload with a different structure (`payload[-1] == True`)
+and then the child will gracefully exit.
+
+We keep a counter of how many tasks we've given to the child, minus how many results we've got back.
+When assigning work, we give it to a child chosen randomly from the set of children whose counter value is smallest.
+(i.e. shortest backlog)
+
+When passing the question and answer to the child and back, we pass around a UUID.
+This is because the client may submit two tasks with apply_async, then request the result for the second one,
+before the first.
+We can't assume that the next result coming back from the child is the one we want,
+since each child can have a backlog of a few tasks.
+
+Originally I passed a new pipe to the child for each task to process,
+but this results in OSErrors from too many open files (i.e. too many pipes),
+and passing pipes through pipes is unusually slow on low-memory Lambda functions for some reason.

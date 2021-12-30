@@ -282,13 +282,6 @@ class TestMap(TestCase):
         with Pool() as p:
             p.map(square, range(10**3))
 
-    @unittest.skip('Very slow')
-    def test_memory_leak(self):
-        for i in range(10**3):
-            with Pool() as p:
-                for j in range(10**5):
-                    p.map(square, range(10**3))
-
 class TestMapAsync(TestCase):
     def test_simple(self):
         args = range(5)
@@ -406,6 +399,7 @@ class TestMoto(TestCase):
         with Pool(0) as p:
             with self.assertDuration(min_t=t-delta, max_t=t+delta):
                 r = p.apply_async(sleep, (t,))
+                pass # makes traceback from __exit__ easier to read
 
     @mock_s3
     def test_moto(self):
@@ -436,6 +430,14 @@ class TestMoto(TestCase):
 
         ret = client.get_object(Bucket=bucket_name, Key=key)['Body'].read()
         self.assertEqual(ret, data)
+
+class TestSlow(TestCase):
+    @unittest.skip('Very slow')
+    def test_memory_leak(self):
+        for i in range(10**2):
+            with Pool() as p:
+                for j in range(10**2):
+                    p.map(square, range(10**3))
 
 if __name__ == '__main__':
     unittest.main()
