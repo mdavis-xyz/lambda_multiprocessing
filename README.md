@@ -8,7 +8,7 @@ This library is for doing multiprocessing in AWS Lambda in python.
 ## The Problem
 
 If you deploy Python code to an [AWS Lambda function](https://aws.amazon.com/lambda/),
-the multiprocessing functions in the standard library such as `multiprocessing.Pool.map` will not work.
+the multiprocessing functions in the standard library such as [`multiprocessing.Pool.map`](https://docs.python.org/3/library/multiprocessing.html?highlight=multiprocessing%20python%20map%20pool#multiprocessing.pool.Pool.map) will not work.
 
 For example:
 
@@ -46,6 +46,12 @@ This also includes unit testing, error handling etc, to match what you get from 
 
 ## Usage
 
+Install with:
+
+```
+pip install lambda_multiprocessing
+```
+
 Once you've imported `Pool`, it acts just like `multiprocessing.Pool`.
 [Details here](https://docs.python.org/3/library/multiprocessing.html?highlight=multiprocessing%20python%20map%20pool#module-multiprocessing.pool).
 
@@ -63,8 +69,9 @@ assert results == [x*x for x in range(5)]
 Note that Lambda functions usually have only 2 vCPUs.
 If you allocate a lot or memory you get a few more.
 (e.g. 3 at 5120MB, 6 at 10240MB)
-The performance benefit you get from multiprocessing CPU-bound tasks is limited by the number of CPUs.
-The biggest performance benefit is for IO-bound tasks.
+The performance benefit you get from multiprocessing CPU-bound tasks is equal to the number of CPUs, minus overhead.
+(e.g. double speed for multiprocessing with 2 vCPUs)
+You can get bigger performance benefits for IO-bound tasks.
 (e.g. uploading many files to S3, publishing many payloads to SNS etc).
 
 ## Limitations
@@ -88,7 +95,7 @@ So do not pass those to or from the child processes.
 is **not** concurrency safe.
 So if you're unit testing using moto, pass `0` as the first argument to `Pool`,
 and then all the work will actually be done in the main thread.
-i.e. no multiprocessing at all
+i.e. no multiprocessing at all.
 So you need an `if` statement to pass 0 or a positive integer based on whether this is unit testing or the real thing.
 
 ## Development
@@ -137,3 +144,6 @@ since each child can have a backlog of a few tasks.
 Originally I passed a new pipe to the child for each task to process,
 but this results in OSErrors from too many open files (i.e. too many pipes),
 and passing pipes through pipes is unusually slow on low-memory Lambda functions for some reason.
+
+Note that `multiprocessing.Queue` doesn't work in Lambda functions.
+So we can't use that to distribute work amongst the children.
