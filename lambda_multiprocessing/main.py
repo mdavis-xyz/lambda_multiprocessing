@@ -57,7 +57,7 @@ class Child:
                 self.child_conn.send(result)
         self.child_conn.close()
 
-    def _do_work(self, id, func, args=(), kwds={}) -> Union[Tuple[Any, None], Tuple[None, Exception]]:
+    def _do_work(self, id, func, args, kwds) -> Union[Tuple[Any, None], Tuple[None, Exception]]:
         try:
             ret = {id: (func(*args, **kwds), None)}
         except Exception as e:
@@ -66,9 +66,11 @@ class Child:
         assert isinstance(list(ret.keys())[0], UUID)
         return ret
 
-    def submit(self, func, args=(), kwds={}) -> 'AsyncResult':
+    def submit(self, func, args=(), kwds=None) -> 'AsyncResult':
         if self._closed:
             raise ValueError("Cannot submit tasks after closure")
+        if kwds is None:
+            kwds = {}
         id = uuid4()
         self.parent_conn.send([(id, func, args, kwds), None])
         if self.main_proc:
@@ -282,11 +284,11 @@ class Pool:
             c.terminate()
         self._closed |= True
 
-    def apply(self, func, args=(), kwds={}):
+    def apply(self, func, args=(), kwds=None):
         ret = self.apply_async(func, args, kwds)
         return ret.get()
 
-    def apply_async(self, func, args=(), kwds={}, callback=None, error_callback=None) -> AsyncResult:
+    def apply_async(self, func, args=(), kwds=None, callback=None, error_callback=None) -> AsyncResult:
         if callback:
             raise NotImplementedError("callback not implemented")
         if error_callback:
@@ -294,6 +296,8 @@ class Pool:
 
         if self._closed:
             raise ValueError("Pool already closed")
+        if kwds is None:
+            kwds = {}
 
 
         # choose the first idle process if there is one
