@@ -305,7 +305,7 @@ class Pool:
         for c in self.children:
             c.flush()
         min_q_sz = min(c.queue_sz for c in self.children)
-        c = random.choice([c for c in self.children if c.queue_sz == min_q_sz])
+        c = random.choice([c for c in self.children if c.queue_sz <= min_q_sz])
         return c.submit(func, args, kwds)
 
     def map_async(self, func, iterable, chunksize=None, callback=None, error_callback=None) -> List[AsyncResult]:
