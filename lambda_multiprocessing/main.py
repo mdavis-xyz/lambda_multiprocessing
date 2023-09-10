@@ -245,15 +245,14 @@ class Pool:
 
         self._closed = False
 
-    def __enter__(self):
-        self._closed = False
-
         if self.num_processes > 0:
             self.children = [Child() for _ in range(self.num_processes)]
         else:
             # create one 'child' which will just do work in the main thread
             self.children = [Child(main_proc=True)]
 
+
+    def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
