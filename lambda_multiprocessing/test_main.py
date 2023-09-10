@@ -282,6 +282,24 @@ class TestMap(TestCase):
         with Pool() as p:
             p.map(square, range(10**3))
 
+    def test_without_with(self):
+        # check that the standard library Pool
+        # can do .map() without `with`
+        p = multiprocessing.Pool(3)
+        ret = p.map(square, [1,2])
+        self.assertEqual(ret, [1,2*2])
+        p.close()
+        p.join()
+
+        # now check that this library can do it
+        p = Pool(3)
+        ret = p.map(square, [1,2])
+        self.assertEqual(ret, [1,2*2])
+        p.close()
+        p.join()
+
+        
+
 class TestMapAsync(TestCase):
     def test_simple(self):
         args = range(5)
@@ -432,7 +450,7 @@ class TestMoto(TestCase):
         self.assertEqual(ret, data)
 
 class TestSlow(TestCase):
-    @unittest.skip('Very slow')
+    #@unittest.skip('Very slow')
     def test_memory_leak(self):
         for i in range(10**2):
             with Pool() as p:
