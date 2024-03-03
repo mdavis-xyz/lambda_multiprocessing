@@ -7,7 +7,7 @@ from pathlib import Path
 import os
 
 import boto3
-from moto import mock_s3
+from moto import mock_aws
 
 # add an overhead for duration when asserting the duration of child processes
 # if other processes are hogging CPU, make this bigger
@@ -419,7 +419,7 @@ class TestMoto(TestCase):
                 r = p.apply_async(sleep, (t,))
                 pass # makes traceback from __exit__ easier to read
 
-    @mock_s3
+    @mock_aws
     def test_moto(self):
         bucket_name = 'mybucket'
         key = 'my-file'
