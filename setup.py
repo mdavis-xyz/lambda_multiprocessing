@@ -26,5 +26,6 @@ setup(
    'Programming Language :: Python :: 3.12',
  ],
  keywords=['python', 'AWS', 'Amazon', 'Lambda', 'multiprocessing', 'pool', 'concurrency'],
- packages=find_packages()
+ packages=find_packages(),
+ package_data={"lambda_multiprocessing": ["py.typed"]},
 )
