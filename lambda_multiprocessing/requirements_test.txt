@@ -1,3 +1,4 @@
 moto[s3]>=5
 boto3
 tox>=2.7.0
+wheel

@@ -1,6 +1,8 @@
 #!/bin/bash
-set -e
+#set -e
 set -o pipefail
+export AWS_DEFAULT_REGION=ap-southeast-2
+export LAMBDA_FUNCTION=test-lammulti
 test $LAMBDA_FUNCTION
 cd lambda_code
 pip install ../../ --target ./
