@@ -334,11 +334,14 @@ class TestMapAsync(TestCase):
         self.assertEqual(results, [square(e) for e in args])
 
     def test_duration(self):
-        n = 2
-        with self.pool_generator(n) as p:
-            with self.assertDuration(min_t=(n-1)-delta, max_t=(n+1)+delta):
+        sleep_duration = 0.5
+        n_procs = 2
+        num_tasks_per_proc = 2
+        expected_wall_time = sleep_duration * num_tasks_per_proc
+        with self.pool_generator(n_procs) as p:
+            with self.assertDuration(min_t=expected_wall_time-delta, max_t=expected_wall_time+delta):
                 with self.assertDuration(max_t=delta):
-                    results = p.map_async(sleep, range(n))
+                    results = p.map_async(sleep, [1] * (num_tasks_per_proc * n_procs))
                 results.get()
 
     def test_error_handling(self):
