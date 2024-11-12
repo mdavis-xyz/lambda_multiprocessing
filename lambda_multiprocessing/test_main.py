@@ -30,6 +30,10 @@ def divide(a, b):
 def return_args_kwargs(*args, **kwargs):
     return {'args': args, 'kwargs': kwargs}
 
+def return_with_sleep(x, delay=0.3):
+    sleep(delay)
+    return x
+
 class TestStdLib(unittest.TestCase):
     @unittest.skip('Need to set up to remove /dev/shm')
     def test_standard_library(self):
@@ -81,22 +85,23 @@ class TestAssertDuration(TestCase):
             sleep(t)
 
 class TestApply(TestCase):
+    pool_generator = Pool
 
     def test_simple(self):
         args = range(5)
-        with Pool() as p:
+        with self.pool_generator() as p:
             actual = [p.apply(square, (x,)) for x in args]
         with multiprocessing.Pool() as p:
             expected = [p.apply(square, (x,)) for x in args]
         self.assertEqual(actual, expected)
 
     def test_two_args(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             actual = p.apply(sum_two, (3, 4))
             self.assertEqual(actual, sum_two(3, 4))
 
     def test_kwargs(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             actual = p.apply(return_args_kwargs, (1, 2), {'x': 'X', 'y': 'Y'})
             expected = {
                 'args': (1,2),
@@ -107,10 +112,16 @@ class TestApply(TestCase):
             }
             self.assertEqual(actual, expected)
 
+# rerun all the tests with stdlib
+# to confirm we have the same behavior
+class TestApplyStdLib(TestApply):
+    pool_generator = multiprocessing.Pool
+
 class TestApplyAsync(TestCase):
+    pool_generator = Pool
 
     def test_result(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             r = p.apply_async(square, (2,))
             result = r.get(2)
             self.assertEqual(result, square(2))
@@ -118,7 +129,7 @@ class TestApplyAsync(TestCase):
     def test_twice(self):
         args = range(5)
         # now try twice with the same pool
-        with Pool() as p:
+        with self.pool_generator() as p:
             ret = [p.apply_async(square, (x,)) for x in args]
             ret.extend(p.apply_async(square, (x,)) for x in args)
 
@@ -127,7 +138,7 @@ class TestApplyAsync(TestCase):
     def test_time(self):
         # test the timing to confirm it's in parallel
         n = 4
-        with Pool(n) as p:
+        with self.pool_generator(n) as p:
             with self.assertDuration(min_t=n-1, max_t=(n-1)+delta):
                 with self.assertDuration(max_t=1):
                     ret = [p.apply_async(sleep, (r,)) for r in range(n)]
@@ -138,14 +149,14 @@ class TestApplyAsync(TestCase):
         # .get after __exit__, but process finishes before __exit__
         with self.assertRaises(multiprocessing.TimeoutError):
             t = 1
-            with Pool() as p:
+            with self.pool_generator() as p:
                 r = p.apply_async(square, (t,))
                 sleep(1)
             r.get()
 
         with self.assertRaises(multiprocessing.TimeoutError):
             t = 1
-            with Pool() as p:
+            with self.pool_generator() as p:
                 r = p.apply_async(square, (t,))
                 sleep(1)
             r.get(1)
@@ -153,26 +164,26 @@ class TestApplyAsync(TestCase):
         # __exit__ before process finishes
         with self.assertRaises(multiprocessing.TimeoutError):
             t = 1
-            with Pool() as p:
+            with self.pool_generator() as p:
                 r = p.apply_async(sleep, (t,))
             r.get(t+1) # .get() with arg after __exit__
 
         with self.assertRaises(multiprocessing.TimeoutError):
             t = 1
-            with Pool() as p:
+            with self.pool_generator() as p:
                 r = p.apply_async(sleep, (t,))
             r.get() # .get() without arg after __exit__
 
     def test_get_not_ready_a(self):
         t = 2
-        with Pool() as p:
+        with self.pool_generator() as p:
             r = p.apply_async(sleep, (t,))
             with self.assertRaises(multiprocessing.TimeoutError):
                 r.get(t-1) # result not ready get
 
     def test_get_not_ready_b(self):
         t = 2
-        with Pool() as p:
+        with self.pool_generator() as p:
             # check same exception exists from main
             r = p.apply_async(sleep, (t,))
             with self.assertRaises(TimeoutError):
@@ -180,7 +191,7 @@ class TestApplyAsync(TestCase):
 
     def test_get_not_ready_c(self):
         t = 2
-        with Pool() as p:
+        with self.pool_generator() as p:
             r = p.apply_async(sleep, (t,))
             sleep(1)
             self.assertFalse(r.ready())
@@ -188,7 +199,7 @@ class TestApplyAsync(TestCase):
             self.assertTrue(r.ready())
 
     def test_wait(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             r = p.apply_async(square, (1,))
             with self.assertDuration(max_t=delta):
                 r.wait()
@@ -212,13 +223,13 @@ class TestApplyAsync(TestCase):
             ret = r.get(0)
 
     def test_get_twice(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             r = p.apply_async(square, (2,))
             self.assertEqual(r.get(), square(2))
             self.assertEqual(r.get(), square(2))
 
     def test_successful(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             r = p.apply_async(square, (1,))
             sleep(delta)
             self.assertTrue(r.successful())
@@ -236,13 +247,13 @@ class TestApplyAsync(TestCase):
             self.assertFalse(r.successful())
 
     def test_two_args(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             ret = p.apply_async(sum_two, (1, 2))
             ret.wait()
             self.assertEqual(ret.get(), sum_two(1,2))
 
     def test_kwargs(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             actual = p.apply_async(return_args_kwargs, (1, 2), {'x': 'X', 'y': 'Y'}).get()
             expected = {
                 'args': (1,2),
@@ -255,14 +266,21 @@ class TestApplyAsync(TestCase):
 
     def test_error_handling(self):
         with self.assertRaises(AssertionError):
-            with Pool() as p:
+            with self.pool_generator() as p:
                 r = p.apply_async(fail, (1,))
                 r.get()
 
+# retrun tests with standard library
+# to confirm our behavior matches theirs
+class TestApplyAsyncStdLib(TestApplyAsync):
+    pool_generator = multiprocessing.Pool
+
 class TestMap(TestCase):
+    pool_generator = Pool
+    
     def test_simple(self):
         args = range(5)
-        with Pool() as p:
+        with self.pool_generator() as p:
             actual = p.map(square, args)
         self.assertIsInstance(actual, list)
         expected = [square(x) for x in args]
@@ -271,111 +289,121 @@ class TestMap(TestCase):
 
     def test_duration(self):
         n = 2
-        with Pool(n) as p:
+        with self.pool_generator(n) as p:
             with self.assertDuration(min_t=(n-1)-delta, max_t=(n+1)+delta):
                 p.map(sleep, range(n))
 
     def test_error_handling(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             with self.assertRaises(AssertionError):
                 p.map(fail, range(2))
 
     @unittest.skip('Need to implement chunking to fix this')
     def test_long_iter(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             p.map(square, range(10**3))
 
     def test_without_with(self):
-        # check that the standard library Pool
-        # can do .map() without `with`
-        p = multiprocessing.Pool(3)
+        p = self.pool_generator(3)
         ret = p.map(square, [1,2])
         self.assertEqual(ret, [1,2*2])
         p.close()
         p.join()
 
-        # now check that this library can do it
-        p = Pool(3)
-        ret = p.map(square, [1,2])
-        self.assertEqual(ret, [1,2*2])
-        p.close()
-        p.join()
-
-        
+class TestMapStdLib(TestMap):
+    pool_generator = multiprocessing.Pool
 
 class TestMapAsync(TestCase):
+    pool_generator = Pool
+
     def test_simple(self):
         args = range(5)
-        with Pool() as p:
+        with self.pool_generator() as p:
             actual = p.map_async(square, args)
-            self.assertIsInstance(actual, list)
-            for x in actual:
-                self.assertIsInstance(x, AsyncResult)
-
-            results = [a.get() for a in actual]
+            self.assertIsInstance(actual, (AsyncResult, multiprocessing.pool.AsyncResult))
+            results = actual.get()
         self.assertEqual(results, [square(e) for e in args])
 
     def test_duration(self):
         n = 2
-        with Pool(n) as p:
+        with self.pool_generator(n) as p:
             with self.assertDuration(min_t=(n-1)-delta, max_t=(n+1)+delta):
                 with self.assertDuration(max_t=delta):
                     results = p.map_async(sleep, range(n))
-                [r.get() for r in results]
+                results.get()
 
     def test_error_handling(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             r = p.map_async(fail, range(2))
             with self.assertRaises(AssertionError):
-                [x.get(1) for x in r]
+                r.get()
+
+class TestMapAsyncStdLib(TestMapAsync):
+    pool_generator = multiprocessing.Pool
 
 class TestStarmap(TestCase):
+    pool_generator = Pool
+
     def test(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             actual = p.starmap(sum_two, [(1,2), (3,4)])
         expected = [(1+2), (3+4)]
         self.assertEqual(actual, expected)
 
     def test_error_handling(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             with self.assertRaises(ZeroDivisionError):
                 p.starmap(divide, [(1,2), (3,0)])
 
-
+class TestStarmapStdLib(TestStarmap):
+    pool_generator = multiprocessing.Pool
 
 class TestStarmapAsync(TestCase):
+    pool_generator = Pool
+
     def test(self):
-        with Pool() as p:
-            actual = p.starmap_async(sum_two, [(1,2), (3,4)])
-            self.assertIsInstance(actual, list)
-            actual = [r.get() for r in actual]
+        with self.pool_generator() as p:
+            response = p.starmap_async(sum_two, [(1,2), (3,4)])
+            self.assertIsInstance(response, (AsyncResult, multiprocessing.pool.AsyncResult))
+            actual = response.get()
         expected = [(1+2), (3+4)]
         self.assertEqual(actual, expected)
 
     def test_error_handling(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             results = p.starmap_async(divide, [(1,2), (3,0)])
             with self.assertRaises(ZeroDivisionError):
-                [r.get() for r in results]
+                results.get()
 
+class TestStarmapAsyncStdLib(TestStarmapAsync):
+    pool_generator = multiprocessing.Pool
 
-class TestTidyUp(TestCase):
+class TestExit(TestCase):
+    # only test this with our library,
+    # not the standard library
+    # because the standard library has a bug
+    # https://github.com/python/cpython/issues/79659
+
     # test that the implicit __exit__
     # waits for child process to finish
     def test_exit(self):
         t = 1
         with Pool() as p:
-            r = p.apply_async(sleep, (t,))
             t1 = time()
+            r = p.apply_async(sleep, (t,))
         t2 = time()
+        breakpoint()
         self.assertLessEqual(abs((t2-t1)-t), delta)
+
+class TestTidyUp(TestCase):
+    pool_generator = Pool
 
     # test that .close() stops new submisssions
     # but does not halt existing num_processes
     # nor wait for them to finish
     def test_close(self):
         t = 1
-        with Pool() as p:
+        with self.pool_generator() as p:
             r = p.apply_async(sleep, (t,))
             with self.assertDuration(max_t=delta):
                 p.close()
@@ -384,7 +412,7 @@ class TestTidyUp(TestCase):
             pass # makes traceback from __exit__ clearer
 
     def test_submit_after_close(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             p.close()
             with self.assertRaises(ValueError):
                 p.apply_async(square, (1,))
@@ -393,7 +421,7 @@ class TestTidyUp(TestCase):
     # wait for child process to finish
     def test_terminate(self):
         with self.assertDuration(max_t=delta):
-            with Pool() as p:
+            with self.pool_generator() as p:
                 r = p.apply_async(sleep, (1,))
                 t1 = time()
                 p.terminate()
@@ -401,12 +429,16 @@ class TestTidyUp(TestCase):
                 self.assertLessEqual(t2-t1, delta)
 
     def test_submit_after_terminate(self):
-        with Pool() as p:
+        with self.pool_generator() as p:
             p.terminate()
             with self.assertRaises(ValueError):
                 p.apply_async(square, (1,))
 
+class TestTidyUpStdLib(TestTidyUp):
+    pool_generator = multiprocessing.Pool
+
 class TestDeadlock(TestCase):
+
     # test this issue:
     # https://github.com/mdavis-xyz/lambda_multiprocessing/issues/17
     def test_map_deadlock(self):
@@ -423,21 +455,19 @@ class TestDeadlock(TestCase):
         start_t = time()
 
         with multiprocessing.Pool(processes=1) as p:
-            p.map(self.work, data)
+            p.map(return_with_sleep, data)
         
         end_t = time()
         stdlib_duration = end_t - start_t
-        print(f"{stdlib_duration=}")
 
         # this timeout manager doesn't work
         # need to run the parent inside another process/thread?
         # now our one
-        print("Running test which might deadlock")
         data = [self.generate_big_data() for _ in range(num_payloads)]
         with Pool(processes=1) as p:
             with TimeoutManager(stdlib_duration*2, "This Library's map deadlocked"):
                 try:
-                    p.map(self.work, data)
+                    p.map(return_with_sleep, data)
                 except TestTimeoutException:
                     p.terminate()
                     raise
@@ -455,7 +485,7 @@ class TestDeadlock(TestCase):
         expected_duration = child_sleep * num_payloads
         start_t = time()
         with multiprocessing.Pool(processes=1) as p:
-            results = p.map_async(self.work, data)
+            results = p.map_async(return_with_sleep, data)
             [r.get() for r in results]
         end_t = time()
         stdlib_duration = end_t - start_t
@@ -464,7 +494,7 @@ class TestDeadlock(TestCase):
         with Pool(processes=1) as p:
             with TimeoutManager(stdlib_duration*2, "This Library's map_async deadlocked"):
                 try:
-                    results = p.map_async(self.work, data)
+                    results = p.map_async(return_with_sleep, data)
                     [r.get() for r  in results]
                 except TestTimeoutException:
                     p.terminate()
@@ -475,10 +505,6 @@ class TestDeadlock(TestCase):
     def generate_big_data(cls, sz=2**26) -> bytes:
         return 'x' * sz
 
-    @classmethod
-    def work(cls, x, delay=0.3):
-        sleep(delay)
-        return x
 
 # must be a global method to be pickleable
 def upload(args: Tuple[str, str, bytes]):
@@ -526,21 +552,12 @@ class TestMoto(TestCase):
         self.assertEqual(ret, data)
 
 class TestSlow(TestCase):
-    #@unittest.skip('Very slow')
+    @unittest.skip('Very slow')
     def test_memory_leak(self):
         for i in range(10**2):
             with Pool() as p:
                 for j in range(10**2):
                     p.map(square, range(10**3))
-
-class Timeout:
-    def __init__(self, seconds, message='Test Timed Out'):
-        self.seconds = seconds
-        self.message = message
-
-    def __enter__(self):
-
-        return self
 
 if __name__ == '__main__':
     unittest.main()

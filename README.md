@@ -113,8 +113,11 @@ Then you can run the unit tests with:
 python3 -m unittest
 ```
 
-`CICD` is for the GitHub Actions which run unit tests and integration tests.
+The tests themselves are defined in `lambda_multiprocessing/test_main.py`.
+
+`CICD` is for the GitHub Actions which run the unit tests and integration tests.
 You probably don't need to touch those.
+
 
 ## Design
 
