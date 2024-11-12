@@ -5,6 +5,8 @@ from uuid import uuid4, UUID
 import random
 import os
 from time import time
+from select import select
+import signal
 
 class Child:
     proc: Process
@@ -321,8 +323,52 @@ class Pool:
         return [self.apply_async(func, args) for args in iterable]
 
     def starmap(self, func, iterable: Iterable[Iterable], chunksize=None, callback=None, error_callback=None) -> List[Any]:
-        results = self.starmap_async(func, iterable, chunksize, callback, error_callback)
-        return [r.get() for r in results]
+        if chunksize:
+            raise NotImplementedError("chunksize not implemented")
+        if callback:
+            raise NotImplementedError("callback not implemented")
+        if error_callback:
+            raise NotImplementedError("error_callback not implemented")
+
+        idle_children = set(self.children)
+        ids = []
+        pending_results: Dict[UUID, AsyncResult] = {}
+
+        for args in iterable:
+            if not idle_children:
+                # wait for a child to become idle
+                # by waiting for any of the pipes from children to become readable
+                ready, _, _ = select([c.parent_conn for c in self.children], [], [])
+
+                # at least one child is idle. 
+                # check all children, read their last result from the pipe
+                # then issue the new task
+                for child in self.children:
+                    if child.parent_conn in ready:
+                        assert child.parent_conn.poll()
+                        child.flush()
+                        idle_children.add(child)
+                
+
+            child = idle_children.pop()
+            async_result = child.submit(func, args)
+            pending_results[async_result.id] = async_result
+            ids.append(async_result.id)
+
+
+        if len(idle_children) < len(self.children):
+            # if at least one child is still working
+            # wait with select
+            ready, _, _ = select([c.parent_conn for c in self.children if c not in idle_children], [], [])
+
+        # get all the results
+        # re-arranging the order
+        results = []
+        for (i, id) in enumerate(ids):
+            result = pending_results[id].get()
+            results.append(result)
+
+        return results
 
     def imap(self, func, iterable, chunksize=None):
         raise NotImplementedError("Only normal apply, map, starmap and their async equivilents have been implemented")
