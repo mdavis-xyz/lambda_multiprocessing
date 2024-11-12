@@ -336,13 +336,14 @@ class TestMapAsync(TestCase):
     def test_duration(self):
         sleep_duration = 0.5
         n_procs = 2
-        num_tasks_per_proc = 2
+        num_tasks_per_proc = 3
         expected_wall_time = sleep_duration * num_tasks_per_proc
         with self.pool_generator(n_procs) as p:
             with self.assertDuration(min_t=expected_wall_time-delta, max_t=expected_wall_time+delta):
                 with self.assertDuration(max_t=delta):
-                    results = p.map_async(sleep, [1] * (num_tasks_per_proc * n_procs))
+                    results = p.map_async(sleep, [sleep_duration] * (num_tasks_per_proc * n_procs))
                 results.get()
+       
 
     def test_error_handling(self):
         with self.pool_generator() as p:
@@ -394,6 +395,8 @@ class TestStarmapAsync(TestCase):
             results = p.starmap_async(divide, [(1,2), (3,0)])
             with self.assertRaises(ZeroDivisionError):
                 results.get()
+
+
 
 class TestStarmapAsyncStdLib(TestStarmapAsync):
     pool_generator = multiprocessing.Pool
@@ -519,6 +522,25 @@ class TestDeadlock(TestCase):
                     p.terminate()
                     raise
                 
+    # test that map_async returns immediately
+    # even when there are multiple tasks per child
+    # with payloads bigger than the buffer
+    def test_nonblocking(self):
+        sleep_duration = 0.5
+        n_procs = 2
+        num_tasks_per_proc = 3
+        expected_wall_time = sleep_duration * num_tasks_per_proc
+        # use a big payload, to ensure the buffer fills up from the first arg
+        with Pool(n_procs) as p:
+            try:
+                with TimeoutManager(sleep_duration * num_tasks_per_proc * 2, "This Library's map_async deadlocked"):
+                    with self.assertDuration(max_t=delta):
+                        results = p.map_async(return_with_sleep, [(self.generate_big_data(), sleep_duration)] * (num_tasks_per_proc * n_procs))
+            
+                results.get()
+            except TestTimeoutException:
+                p.terminate()
+                raise
 
     @classmethod
     def generate_big_data(cls, sz=2**26) -> bytes:
