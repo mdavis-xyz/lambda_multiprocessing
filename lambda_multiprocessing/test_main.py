@@ -8,6 +8,7 @@ import os
 
 import boto3
 from moto import mock_aws
+from timeout import TimeoutManager, TestTimeoutException
 
 # add an overhead for duration when asserting the duration of child processes
 # if other processes are hogging CPU, make this bigger
@@ -42,6 +43,8 @@ class TestCase(unittest.TestCase):
     # with self.assertDuration(1, 2):
     #   something
     # to assert that something takes between 1 to 2 seconds to run
+    # If the task takes forever, this assertion will not be raised
+    # For a potential eternal task, use timeout.TimeoutManager
     def assertDuration(self, min_t=None, max_t=None):
         class AssertDuration:
             def __init__(self, test):
@@ -403,6 +406,79 @@ class TestTidyUp(TestCase):
             with self.assertRaises(ValueError):
                 p.apply_async(square, (1,))
 
+class TestDeadlock(TestCase):
+    # test this issue:
+    # https://github.com/mdavis-xyz/lambda_multiprocessing/issues/17
+    def test_map_deadlock(self):
+
+        child_sleep = 0.01
+        num_payloads = 6
+
+        # use standard library to start with
+        # and to measure a 'normal' duration
+        # (the time spend passing data between processes is longer than the sleep
+        #  inside the worker)
+        expected_duration = child_sleep * num_payloads
+        data = [self.generate_big_data() for _ in range(num_payloads)]
+        start_t = time()
+
+        with multiprocessing.Pool(processes=1) as p:
+            p.map(self.work, data)
+        
+        end_t = time()
+        stdlib_duration = end_t - start_t
+        print(f"{stdlib_duration=}")
+
+        # this timeout manager doesn't work
+        # need to run the parent inside another process/thread?
+        # now our one
+        print("Running test which might deadlock")
+        data = [self.generate_big_data() for _ in range(num_payloads)]
+        with Pool(processes=1) as p:
+            with TimeoutManager(stdlib_duration*2, "This Library's map deadlocked"):
+                try:
+                    p.map(self.work, data)
+                except TestTimeoutException:
+                    p.terminate()
+                    raise
+
+    def test_map_async_deadlock(self):
+
+        child_sleep = 0.4
+        num_payloads = 3
+        data = [self.generate_big_data() for _ in range(num_payloads)]
+
+        # use standard library to start with
+        # and to measure a 'normal' duration
+        # (the time spend passing data between processes is longer than the sleep
+        #  inside the worker)
+        expected_duration = child_sleep * num_payloads
+        start_t = time()
+        with multiprocessing.Pool(processes=1) as p:
+            results = p.map_async(self.work, data)
+            [r.get() for r in results]
+        end_t = time()
+        stdlib_duration = end_t - start_t
+
+        # now our one
+        with Pool(processes=1) as p:
+            with TimeoutManager(stdlib_duration*2, "This Library's map_async deadlocked"):
+                try:
+                    results = p.map_async(self.work, data)
+                    [r.get() for r  in results]
+                except TestTimeoutException:
+                    p.terminate()
+                    raise
+                
+
+    @classmethod
+    def generate_big_data(cls, sz=2**26) -> bytes:
+        return 'x' * sz
+
+    @classmethod
+    def work(cls, x, delay=0.3):
+        sleep(delay)
+        return x
 
 # must be a global method to be pickleable
 def upload(args: Tuple[str, str, bytes]):
@@ -456,6 +532,15 @@ class TestSlow(TestCase):
             with Pool() as p:
                 for j in range(10**2):
                     p.map(square, range(10**3))
+
+class Timeout:
+    def __init__(self, seconds, message='Test Timed Out'):
+        self.seconds = seconds
+        self.message = message
+
+    def __enter__(self):
+
+        return self
 
 if __name__ == '__main__':
     unittest.main()
