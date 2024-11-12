@@ -1,8 +1,8 @@
 import unittest
-import multiprocessing
+import multiprocessing, multiprocessing.pool
 from lambda_multiprocessing import Pool, TimeoutError, AsyncResult
 from time import time, sleep
-from typing import Tuple
+from typing import Tuple, Optional
 from pathlib import Path
 import os
 
@@ -33,6 +33,15 @@ def return_args_kwargs(*args, **kwargs):
 def return_with_sleep(x, delay=0.3):
     sleep(delay)
     return x
+
+def _raise(ex: Optional[Exception]):
+    if ex:
+        raise ex
+
+class ExceptionA(Exception):
+    pass
+class ExceptionB(Exception):
+    pass
 
 class TestStdLib(unittest.TestCase):
     @unittest.skip('Need to set up to remove /dev/shm')
@@ -338,6 +347,14 @@ class TestMapAsync(TestCase):
             with self.assertRaises(AssertionError):
                 r.get()
 
+    def test_multi_error(self):
+        # standard library can raise either error
+
+        with self.assertRaises((ExceptionA, ExceptionB)):
+            with self.pool_generator() as p:
+                r = p.map_async(_raise, (None, ExceptionA("Task 1"), None, ExceptionB("Task 3")))
+                r.get()
+
 class TestMapAsyncStdLib(TestMapAsync):
     pool_generator = multiprocessing.Pool
 
@@ -392,7 +409,6 @@ class TestExit(TestCase):
             t1 = time()
             r = p.apply_async(sleep, (t,))
         t2 = time()
-        breakpoint()
         self.assertLessEqual(abs((t2-t1)-t), delta)
 
 class TestTidyUp(TestCase):
@@ -486,7 +502,7 @@ class TestDeadlock(TestCase):
         start_t = time()
         with multiprocessing.Pool(processes=1) as p:
             results = p.map_async(return_with_sleep, data)
-            [r.get() for r in results]
+            results.get()
         end_t = time()
         stdlib_duration = end_t - start_t
 
@@ -495,7 +511,7 @@ class TestDeadlock(TestCase):
             with TimeoutManager(stdlib_duration*2, "This Library's map_async deadlocked"):
                 try:
                     results = p.map_async(return_with_sleep, data)
-                    [r.get() for r  in results]
+                    results.get()
                 except TestTimeoutException:
                     p.terminate()
                     raise
@@ -526,11 +542,12 @@ class TestMoto(TestCase):
         bucket_name = 'mybucket'
         key = 'my-file'
         data = b"123"
-        client = boto3.client('s3')
+        region = os.getenv("AWS_DEFAULT_REGION", "ap-southeast-2")
+        client = boto3.client('s3', region_name=region)
         client.create_bucket(
             Bucket=bucket_name,
             CreateBucketConfiguration={
-                'LocationConstraint': 'ap-southeast-2'
+                'LocationConstraint': region
             },
         )
         # upload in a different thread

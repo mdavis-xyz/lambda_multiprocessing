@@ -1,6 +1,6 @@
 from multiprocessing import TimeoutError, Process, Pipe
 from multiprocessing.connection import Connection
-from typing import Any, Iterable, List, Dict, Tuple, Union
+from typing import Any, Iterable, List, Dict, Tuple, Union, Optional
 from uuid import uuid4, UUID
 import random
 import os
@@ -223,6 +223,78 @@ class AsyncResult:
 
         return self.result[1] is None
 
+# map_async and starmap_async return a single AsyncResult
+# which is a list of actual results
+# This class aggregates many AsyncResult into one
+class AsyncResultList(AsyncResult):
+    def __init__(self, child_results: List[AsyncResult]):
+        self.child_results = child_results
+        self.result: List[Union[Tuple[Any, None], Tuple[None, Exception]]] = None
+
+    # assume the result is in the self.child.result_cache
+    # move it into self.result
+    def _load(self):
+        for c in self.child_results:
+            c._load()
+
+    # Return the result when it arrives.
+    # If timeout is not None and the result does not arrive within timeout seconds
+    # then multiprocessing.TimeoutError is raised.
+    # If the remote call raised an exception then that exception will be reraised by get().
+    # .get() must remember the result
+    # and return it again multiple times
+    # delete it from the Child.result_cache to avoid memory leak
+    def get(self, timeout=None):
+        if timeout:
+            end_t = time() + timeout
+        else:
+            end_t = None
+
+        results = []
+        for (i, c) in enumerate(self.child_results):
+            # Consider cumulative timeout
+            if timeout is not None:
+                timeout_remaining = end_t - time()
+            else:
+                timeout_remaining = None
+
+            try:
+                result = c.get(timeout=timeout_remaining)
+            except Exception:
+                print(f"Exception raised for {i}th task out of {len(self.child_results)}")
+                # terminate remaining children
+                for c2 in self.child_results[i+1:]:
+                    c2.child.terminate()
+                raise
+
+            results.append(result)
+        return results
+
+    # Wait until the result is available or until timeout seconds pass.
+    def wait(self, timeout=None):
+        
+        if timeout:
+            end_t = time() + timeout
+        else:
+            end_t = None
+        for c in self.child_results:
+            # Consider cumulative timeout
+            if timeout is not None:
+                timeout_remaining = end_t - time()
+            else:
+                timeout_remaining = None
+
+            c.wait(timeout_remaining)
+
+    # Return whether the call has completed.
+    def ready(self):
+        return all(c.ready() for c in self.child_results)
+
+    # Return whether the call completed without raising an exception.
+    # Will raise ValueError if the result is not ready.
+    def successful(self):
+        return all(c.successful() for c in self.child_results)
+
 class Pool:
     def __init__(self, processes=None, initializer=None, initargs=None, maxtasksperchild=None, context=None):
         if processes is None:
@@ -309,18 +381,23 @@ class Pool:
         c = random.choice([c for c in self.children if c.queue_sz <= min_q_sz])
         return c.submit(func, args, kwds)
 
-    def map_async(self, func, iterable, chunksize=None, callback=None, error_callback=None) -> List[AsyncResult]:
+    def map_async(self, func, iterable, chunksize=None, callback=None, error_callback=None) -> AsyncResult:
         return self.starmap_async(func, zip(iterable), chunksize, callback, error_callback)
 
     def map(self, func, iterable, chunksize=None, callback=None, error_callback=None) -> List:
         return self.starmap(func, zip(iterable), chunksize, callback, error_callback)
 
-    def starmap_async(self, func, iterable: Iterable[Iterable], chunksize=None, callback=None, error_callback=None) -> List[AsyncResult]:
+    def starmap_async(self, func, iterable: Iterable[Iterable], chunksize=None, callback=None, error_callback=None) -> AsyncResult:
         if chunksize:
             raise NotImplementedError("Haven't implemented chunksizes. Infinite chunksize only.")
         if callback or error_callback:
             raise NotImplementedError("Haven't implemented callbacks")
-        return [self.apply_async(func, args) for args in iterable]
+        results = [self.apply_async(func, args) for args in iterable]
+
+        # aggregate into one result
+        result = AsyncResultList(child_results=results)
+
+        return result
 
     def starmap(self, func, iterable: Iterable[Iterable], chunksize=None, callback=None, error_callback=None) -> List[Any]:
         if chunksize:
