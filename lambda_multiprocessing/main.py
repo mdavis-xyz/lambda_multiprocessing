@@ -47,8 +47,8 @@ class Child:
             self.proc = Process(target=self.spin)
             self.proc.start()
 
-        #self.set_pipe_timeout(self.parent_conn)
-        #self.set_pipe_timeout(self.child_conn)
+        self.set_pipe_timeout(self.parent_conn)
+        self.set_pipe_timeout(self.child_conn)
 
 
     # each child process runs in this
