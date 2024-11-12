@@ -7,6 +7,10 @@ import os
 from time import time
 from select import select
 import signal
+import socket
+from pickle import PickleError
+
+from retry_sleep import IncreasingDelayManager
 
 class Child:
     proc: Process
@@ -28,6 +32,8 @@ class Child:
 
     _closed: bool = False
 
+    _socket_timeout_s = 0.05
+
     # if True, do the work in the main process
     # but present the same interface
     # and still send stuff through the pipes (to verify they're pickleable)
@@ -41,6 +47,10 @@ class Child:
             self.proc = Process(target=self.spin)
             self.proc.start()
 
+        self.set_pipe_timeout(self.parent_conn)
+        self.set_pipe_timeout(self.child_conn)
+
+
     # each child process runs in this
     # a while loop waiting for payloads from the self.child_conn
     # [(id, func, args, kwds), None] -> call func(args, *kwds)
@@ -49,14 +59,52 @@ class Child:
     #                         {id: (None, err)} if func raised exception err
     # [None, True] -> exit gracefully (write nothing to the pipe)
     def spin(self) -> None:
+        job_list = []
+        result_buf = []
         while True:
-            (job, quit_signal) = self.child_conn.recv()
-            if quit_signal:
-                break
-            else:
+            if job_list:
+                # 1st priority: do work if we can
+                (job, quit_signal) = job_list.pop(0)
                 (id, func, args, kwds) = job
                 result = self._do_work(id, func, args, kwds)
-                self.child_conn.send(result)
+                result_buf.append(result)
+            elif result_buf:
+                # 2nd priority: send results if they're ready
+                result = result_buf[0] # don't remove from list yet
+                try:
+                    self.child_conn.send(result)
+                except BlockingIOError as e:
+                    if self.child_conn.poll():
+                        # deadlock situation: child is sending large result
+                        # whilst parent is sending large next task
+                        # read from parent, then try again
+                        # repeatedly until we get sucess
+                        with IncreasingDelayManager() as dm:
+                            while True:
+                                dm.sleep()
+                                delay *= backoff_factor
+        
+                                try:
+                                    (job, quit_signal) = self.child_conn.recv()
+                                except (BlockingIOError, PickleError, UnicodeDecodeError):
+                                    continue
+                                else:
+                                    job_list.append((job, quit_signal))
+                                    break
+                else:
+                    # result was sent sucessfully
+                    # so remove if from the buffer
+                    result_buf.pop(0)
+            else:
+                # empty job list, fetch new jobs
+                try:
+                    (job, quit_signal) = self.child_conn.recv()
+                except (BlockingIOError, PickleError, UnicodeDecodeError):
+                    # deadlock issue, parent send aborted
+                    pass
+                else:
+                    job_list.append((job, quit_signal))
+
         self.child_conn.close()
 
     def _do_work(self, id, func, args, kwds) -> Union[Tuple[Any, None], Tuple[None, Exception]]:
@@ -75,22 +123,38 @@ class Child:
             kwds = {}
         id = uuid4()
         self.parent_conn.send([(id, func, args, kwds), None])
+
+        with IncreasingDelayManager() as dm:
+            while True:
+                try:
+                    self.parent_conn.send([(id, func, args, kwds), None])
+                except BlockingIOError as e:
+                    dm.sleep()
+                    self.flush()
+                else:
+                    continue
+
         if self.main_proc:
+            # when doing single-process unit testing
+            # just do the work now
             self.child_conn.recv()
             ret = self._do_work(id, func, args, kwds)
             self.child_conn.send(ret)
+        
         self.queue_sz += 1
+
         return AsyncResult(id=id, child=self)
 
     # grab all results in the pipe from child to parent
     # save them to self.result_cache
     def flush(self):
         # watch out, when the other end is closed, a termination byte appears, so .poll() returns True
-        while (not self.parent_conn.closed) and (self.queue_sz > 0) and self.parent_conn.poll(0):
-            result = self.parent_conn.recv()
-            assert isinstance(list(result.keys())[0], UUID)
-            self.result_cache.update(result)
-            self.queue_sz -= 1
+        with IncreasingDelayManager() as dm:
+            while (not self.parent_conn.closed) and (self.queue_sz > 0) and self.parent_conn.poll(0):
+                result = self.parent_conn.recv()
+                assert isinstance(list(result.keys())[0], UUID)
+                self.result_cache.update(result)
+                self.queue_sz -= 1
 
     # prevent new tasks from being submitted
     # but keep existing tasks running
@@ -151,6 +215,10 @@ class Child:
     def __del__(self):
         self.terminate()
 
+    def set_pipe_timeout(self, conn: Connection):
+        s = socket.socket(fileno=conn.fileno())
+        #s.settimeout(self._socket_timeout_s)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDTIMEO, (8*b'\x00')+(500000).to_bytes(8, 'little'))
 
 class AsyncResult:
     def __init__(self, id: UUID, child: Child):
