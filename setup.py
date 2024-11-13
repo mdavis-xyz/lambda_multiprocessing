@@ -6,7 +6,7 @@ with open('README.md', 'r') as f:
 
 setup(
  name='lambda_multiprocessing',
- version='0.5',
+ version='1.0',
  description='drop-in replacement for multiprocessing.Pool in AWS Lambda functions (without /dev/shm shared memory)',
  long_description=long_description,
  long_description_content_type="text/markdown",

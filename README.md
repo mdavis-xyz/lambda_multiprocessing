@@ -169,3 +169,10 @@ In this situation both processes are mid-way through writing something, and won'
 Solutions like having the parent/child check if there's data to receive before sending data won't work because those two steps are not atomic. (I did not want to introduce locks, for performance reasons.)
 
 The solution is that the child will read all available `Task` payloads sent from the parent, into a local buffer, without commencing work on them. Then once it receives a `RunBatchSignal`, it stops reading anything else from the parent, and starts work on the tasks in the buffer. By batching tasks in this way, we can prevent the deadlock, and also ensure that the `*async` functions are non-blocking for large payloads.
+
+## Release Notes
+
+### 1.0
+
+* Breaking change: `map_async` and `starmap_async` return a single `AsyncResult`, whose `.get()` returns a list. Previously they returns a list of `AsyncResult`, but this does not match `multiprocessing.Pool`.
+* Bugfix: Fixed deadlock for large request/response case [\#17](https://github.com/mdavis-xyz/lambda_multiprocessing/issues/17)
