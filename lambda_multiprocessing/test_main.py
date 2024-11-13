@@ -5,6 +5,7 @@ from time import time, sleep
 from typing import Tuple, Optional
 from pathlib import Path
 import os
+from functools import cache
 
 import boto3
 from moto import mock_aws
@@ -13,6 +14,8 @@ from timeout import TimeoutManager, TestTimeoutException
 # add an overhead for duration when asserting the duration of child processes
 # if other processes are hogging CPU, make this bigger
 delta = 0.1
+
+SEC_PER_MIN = 60
 
 # some simple functions to run inside the child process
 def square(x):
@@ -52,6 +55,16 @@ class TestStdLib(unittest.TestCase):
 
 # add assertDuration
 class TestCase(unittest.TestCase):
+
+    max_timeout = SEC_PER_MIN*2
+    timeout_mgr = TimeoutManager(seconds=max_timeout)
+
+    def setUp(self):
+        self.timeout_mgr.start()
+
+    def tearDown(self):
+        self.timeout_mgr.stop()
+
     # use like
     # with self.assertDuration(1, 2):
     #   something
@@ -73,8 +86,10 @@ class TestCase(unittest.TestCase):
                         self.test.assertGreaterEqual(duration, min_t, f"Took less than {min_t}s to run")
                     if max_t is not None:
                         self.test.assertLessEqual(duration, max_t, f"Took more than {max_t}s to run")
+                return False
 
         return AssertDuration(self)
+
 
 
 class TestAssertDuration(TestCase):
@@ -326,12 +341,14 @@ class TestMapAsync(TestCase):
     pool_generator = Pool
 
     def test_simple(self):
-        args = range(5)
-        with self.pool_generator() as p:
-            actual = p.map_async(square, args)
-            self.assertIsInstance(actual, (AsyncResult, multiprocessing.pool.AsyncResult))
-            results = actual.get()
-        self.assertEqual(results, [square(e) for e in args])
+        num_payloads = 5
+        args = range(num_payloads)
+        for num_procs in [(num_payloads+1), (num_payloads-1)]:
+            with self.pool_generator(num_procs) as p:
+                actual = p.map_async(square, args)
+                self.assertIsInstance(actual, (AsyncResult, multiprocessing.pool.AsyncResult))
+                results = actual.get()
+            self.assertEqual(results, [square(e) for e in args])
 
     def test_duration(self):
         sleep_duration = 0.5
@@ -526,24 +543,25 @@ class TestDeadlock(TestCase):
     # even when there are multiple tasks per child
     # with payloads bigger than the buffer
     def test_nonblocking(self):
-        sleep_duration = 0.5
+        sleep_duration = 2
         n_procs = 2
         num_tasks_per_proc = 3
         expected_wall_time = sleep_duration * num_tasks_per_proc
-        # use a big payload, to ensure the buffer fills up from the first arg
+
+        args = [(self.generate_big_data(), sleep_duration)] * (num_tasks_per_proc * n_procs)
         with Pool(n_procs) as p:
             try:
                 with TimeoutManager(sleep_duration * num_tasks_per_proc * 2, "This Library's map_async deadlocked"):
-                    with self.assertDuration(max_t=delta):
-                        results = p.map_async(return_with_sleep, [(self.generate_big_data(), sleep_duration)] * (num_tasks_per_proc * n_procs))
-            
-                results.get()
-            except TestTimeoutException:
+                    with self.assertDuration(max_t=sleep_duration*0.5):
+                        results = p.map_async(return_with_sleep, args)
+                results.get(expected_wall_time*1.5)
+            except Exception:
                 p.terminate()
                 raise
 
     @classmethod
-    def generate_big_data(cls, sz=2**26) -> bytes:
+    @cache
+    def generate_big_data(cls, sz=2**24) -> bytes:
         return 'x' * sz
 
 

@@ -15,19 +15,27 @@ class TimeoutManager:
         self.old_handler = None
 
     def __enter__(self):
+        self.start()
+        return self
+
+    def start(self):
+        assert self.old_handler is None, "Alarm already started"
         self.old_handler = signal.signal(signal.SIGALRM, self.timeout_handler)
         signal.alarm(self.seconds)
-        return self
 
     def timeout_handler(self, signum, frame):
         raise TestTimeoutException(self.description)
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        # Disable the alarm
-        signal.alarm(0)
-        # Restore old signal handler
-        signal.signal(signal.SIGALRM, self.old_handler)
+    def stop(self):
+        if self.old_handler is not None:
+            # Disable the alarm
+            signal.alarm(0)
+            # Restore old signal handler
+            signal.signal(signal.SIGALRM, self.old_handler)
+            self.old_handler = None
 
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.stop()
         if exc_type is TestTimeoutException:
             return False  # Let the TestTimeoutException exception propagate
             
