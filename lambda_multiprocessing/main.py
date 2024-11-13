@@ -12,7 +12,7 @@ from itertools import repeat
 class Request:
     pass
 
-class Task[Request]:
+class Task(Request):
     func: Callable
     args: List
     kwds: Dict
@@ -24,10 +24,10 @@ class Task[Request]:
         self.kwds = kwds or {}
         self.id = id or uuid4()
 
-class QuitSignal[Request]:
+class QuitSignal(Request):
     pass
 
-class RunBatchSignal[Request]:
+class RunBatchSignal(Request):
     pass
     
 # this is what we send back through the pipe from child to parent
@@ -35,7 +35,7 @@ class Response:
     id: UUID
     pass
 
-class SuccessResponse:
+class SuccessResponse(Response):
     result: Any
     def __init__(self, id: UUID, result: Any):
         self.result = result
@@ -43,7 +43,7 @@ class SuccessResponse:
 
 # processing the task raised an exception
 # we save the exception in this object
-class FailResponse:
+class FailResponse(Response):
     exception: Exception
     def __init__(self, id: UUID, exception: Exception):
         self.id = id
