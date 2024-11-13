@@ -9,7 +9,7 @@ from functools import cache
 
 import boto3
 from moto import mock_aws
-from timeout import TimeoutManager, TestTimeoutException
+from lambda_multiprocessing.timeout import TimeoutManager, TestTimeoutException
 
 # add an overhead for duration when asserting the duration of child processes
 # if other processes are hogging CPU, make this bigger
@@ -39,7 +39,7 @@ def return_with_sleep(x, delay=0.3):
 
 def _raise(ex: Optional[Exception]):
     if ex:
-        raise ex
+        raise exfrom .timeout
 
 class ExceptionA(Exception):
     pass
@@ -73,7 +73,7 @@ class TestCase(unittest.TestCase):
     # For a potential eternal task, use timeout.TimeoutManager
     def assertDuration(self, min_t=None, max_t=None):
         class AssertDuration:
-            def __init__(self, test):
+            def __init__(self, test: unittest.TestCase):
                 self.test = test
             def __enter__(self):
                 self.start_t = time()
