@@ -176,3 +176,8 @@ The solution is that the child will read all available `Task` payloads sent from
 
 * Breaking change: `map_async` and `starmap_async` return a single `AsyncResult`, whose `.get()` returns a list. Previously they returns a list of `AsyncResult`, but this does not match `multiprocessing.Pool`.
 * Bugfix: Fixed deadlock for large request/response case [\#17](https://github.com/mdavis-xyz/lambda_multiprocessing/issues/17)
+
+### 1.1
+
+* Add support for Python 3.13
+* Remove support for Python 3.8
