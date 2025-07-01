@@ -6,7 +6,7 @@ with open('README.md', 'r') as f:
 
 setup(
  name='lambda_multiprocessing',
- version='1.0',
+ version='1.1',
  description='drop-in replacement for multiprocessing.Pool in AWS Lambda functions (without /dev/shm shared memory)',
  long_description=long_description,
  long_description_content_type="text/markdown",
@@ -19,11 +19,11 @@ setup(
    'Operating System :: OS Independent',
    'License :: OSI Approved :: MIT License',
    'Programming Language :: Python :: 3',
-   'Programming Language :: Python :: 3.8',
    'Programming Language :: Python :: 3.9',
    'Programming Language :: Python :: 3.10',
    'Programming Language :: Python :: 3.11',
    'Programming Language :: Python :: 3.12',
+   'Programming Language :: Python :: 3.13',
  ],
  keywords=['python', 'AWS', 'Amazon', 'Lambda', 'multiprocessing', 'pool', 'concurrency'],
  packages=find_packages(),
