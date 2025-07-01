@@ -6,21 +6,11 @@ from typing import Tuple, Optional
 from pathlib import Path
 import os
 import sys
-
+from functools import cache
 
 import boto3
 from moto import mock_aws
 from lambda_multiprocessing.timeout import TimeoutManager, TestTimeoutException
-
-if sys.version_info < (3, 9):
-    # functools.cache was added in 3.9
-    # define an empty decorator that doesn't do anything
-    # (our usage of the cache isn't essential)
-    def cache(func):
-        return func
-else:
-    # Import the cache function from functools for Python 3.9 and above
-    from functools import cache
 
 # add an overhead for duration when asserting the duration of child processes
 # if other processes are hogging CPU, make this bigger
